@@ -6,7 +6,8 @@ Ask it anything about spending limits, honorarium rates, travel allowances, and 
 
 > **Want access to the live deployment?** Reach out to me directly — [bryanjmt04@gmail.com](bryanjmt04@gmail.com)
 
-<video src="SBM UI.mp4" controls width="100%"></video>
+
+https://github.com/user-attachments/assets/88bc004e-969d-4812-89c0-3b8026a64c53
 
 ![Table view](SBMTable.jpg)
 
