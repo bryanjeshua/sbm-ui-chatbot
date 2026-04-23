@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="id" x-data="sbmApp()" x-init="init()">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBM UI Chat - Standar Biaya Universitas Indonesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset & base ───────────────────────────────────────────── */
+        [x-cloak] { display: none !important; }
+        *, *::before, *::after { border-radius: 0 !important; box-sizing: border-box; }
+
+        :root {
+            --paper:   #f4efe4;
+            --card:    #fdfaf3;
+            --ink:     #1a1a1a;
+            --ink2:    #444;
+            --ink3:    #888;
+            --blue:    #1e3a8a;
+            --border:  2px solid #1a1a1a;
+            --shadow:  4px 4px 0 #1a1a1a;
+            --shadow2: 2px 2px 0 #1a1a1a;
+        }
+
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 16px;
+            color: var(--ink);
+            background: var(--paper);
+            /* Notebook ruled lines */
+            background-image:
+                repeating-linear-gradient(
+                    transparent, transparent 29px,
+                    rgba(0,0,0,.06) 29px, rgba(0,0,0,.06) 30px
+                );
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Scrollbar ──────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bbb; }
+
+        /* ── Animations ─────────────────────────────────────────────── */
+        .msg-enter { animation: msgIn .22s ease-out; }
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn .18s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ── Stamp shadow ───────────────────────────────────────────── */
+        .stamp {
+            box-shadow: var(--shadow);
+            transition: box-shadow .08s, transform .08s;
+        }
+        .stamp:active { box-shadow: 1px 1px 0 var(--ink); transform: translate(3px,3px); }
+
+        /* ── Header ─────────────────────────────────────────────────── */
+        .app-header {
+            background: var(--paper);
+            border-bottom: var(--border);
+            padding: .55rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .logo-box {
+            width: 40px; height: 40px;
+            border: var(--border);
+            background: var(--ink);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .app-title { font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
+        .app-sub   { font-size: 13px; color: var(--ink3); }
+
+        /* ── Tab switcher ───────────────────────────────────────────── */
+        .tab-group { display: flex; border: var(--border); }
+        .tab-btn {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 15px;
+            font-weight: 600;
+            padding: .3rem 1.1rem;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+            color: var(--ink2);
+            display: flex; align-items: center; gap: .4rem;
+            transition: background .1s, color .1s;
+        }
+        .tab-btn + .tab-btn { border-left: var(--border); }
+        .tab-btn.active { background: var(--ink); color: var(--card); }
+        .tab-btn:not(.active):hover { background: rgba(0,0,0,.07); }
+
+        /* ── Main ───────────────────────────────────────────────────── */
+        main { flex: 1; overflow: hidden; }
+        .view { height: 100%; display: flex; flex-direction: column; }
+
+        /* ── Chat messages area ─────────────────────────────────────── */
+        .chat-scroll { flex: 1; overflow-y: auto; padding: 1.5rem 1rem; }
+        .chat-wrap   { max-width: 48rem; margin: 0 auto; display: flex; flex-direction: column; gap: .875rem; }
+
+        /* ── Welcome ────────────────────────────────────────────────── */
+        .welcome { text-align: center; padding: 4rem 1rem; }
+        .welcome-icon {
+            width: 72px; height: 72px;
+            border: var(--border);
+            background: var(--card);
+            box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+        .welcome h2 { font-size: 1.6rem; font-weight: 700; margin: 0 0 .4rem; }
+        .welcome p  { font-size: 15px; color: var(--ink2); max-width: 26rem; margin: 0 auto 1.75rem; }
+        .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+        .chip {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 14px;
+            padding: .3rem .9rem;
+            border: var(--border);
+            background: var(--card);
+            cursor: pointer;
+            box-shadow: var(--shadow2);
+            transition: all .09s;
+        }
+        .chip:hover { background: #ede7d8; box-shadow: 3px 3px 0 var(--ink); }
+        .chip:active { box-shadow: 0 0 0 var(--ink); transform: translate(2px,2px); }
+
+        /* ── Bubbles ────────────────────────────────────────────────── */
+        .bubble-row-user { display: flex; justify-content: flex-end; }
+        .bubble-row-ai   { display: flex; justify-content: flex-start; }
+        .bubble-user {
+            background: var(--ink);
+            color: var(--card);
+            border: var(--border);
+            padding: .6rem 1rem;
+            max-width: 30rem;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .bubble-ai {
+            background: var(--card);
+            color: var(--ink);
+            border: var(--border);
+            box-shadow: var(--shadow);
+            padding: .7rem 1rem;
+            max-width: 46rem;
+            overflow: hidden;
+        }
+
+        /* ── Typing dots ────────────────────────────────────────────── */
+        .dot { width: .45rem; height: .45rem; background: var(--ink); animation: blink 1.4s infinite both; }
+        .dot:nth-child(2) { animation-delay: .2s; }
+        .dot:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0%,80%,100% { opacity: .2; } 40% { opacity: 1; } }
+
+        /* ── Input bar ──────────────────────────────────────────────── */
+        .input-bar {
+            flex-shrink: 0;
+            border-top: var(--border);
+            background: var(--paper);
+            padding: .6rem 1rem;
+        }
+        .input-form { max-width: 48rem; margin: 0 auto; display: flex; gap: .6rem; }
+        .chat-input {
+            flex: 1;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 15px;
+            padding: .5rem .85rem;
+            border: var(--border);
+            background: var(--card);
+            outline: none;
+            color: var(--ink);
+            transition: box-shadow .09s;
+        }
+        .chat-input:focus { box-shadow: var(--shadow); }
+        .chat-input:disabled { opacity: .45; }
+        .chat-input::placeholder { color: var(--ink3); }
+        .send-btn {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 15px;
+            font-weight: 700;
+            padding: .5rem 1.3rem;
+            border: var(--border);
+            background: var(--ink);
+            color: var(--card);
+            cursor: pointer;
+            display: flex; align-items: center; gap: .35rem;
+            box-shadow: var(--shadow);
+            transition: all .09s;
+        }
+        .send-btn:hover  { background: #333; }
+        .send-btn:active { box-shadow: 1px 1px 0 var(--ink); transform: translate(3px,3px); }
+        .send-btn:disabled { opacity: .35; pointer-events: none; }
+
+        /* ── Markdown in chat ───────────────────────────────────────── */
+        .chat-content { font-size: 15px; line-height: 1.55; }
+        .chat-content strong { font-weight: 700; }
+        .chat-content em     { font-style: italic; }
+        .chat-content ul  { list-style: disc; padding-left: 1.3rem; margin: .3rem 0; }
+        .chat-content li  { margin-bottom: .15rem; }
+        .chat-content h1  { font-size: 1.2rem; font-weight: 700; margin: .6rem 0 .2rem; border-bottom: 2px solid currentColor; padding-bottom: .1rem; }
+        .chat-content h2  { font-size: 1.05rem; font-weight: 700; margin: .5rem 0 .15rem; }
+        .chat-content h3  { font-size: .95rem; font-weight: 700; margin: .4rem 0 .1rem; }
+        .chat-content hr  { border: none; border-top: 2px dashed #bbb; margin: .5rem 0; }
+        .chat-content code { background: rgba(0,0,0,.1); padding: 0 .3rem; font-family: monospace; font-size: .8em; }
+
+        /* ── Chat table ─────────────────────────────────────────────── */
+        .chat-table-outer {
+            overflow-x: auto;
+            margin: .6rem 0;
+            border: var(--border);
+            box-shadow: var(--shadow);
+        }
+        .chat-table-outer table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        .chat-table-outer thead tr { background: var(--ink); color: var(--card); }
+        .chat-table-outer thead th {
+            padding: .45rem .75rem;
+            text-align: left;
+            font-weight: 700;
+            white-space: nowrap;
+            border-right: 1px solid #555;
+            letter-spacing: .01em;
+        }
+        .chat-table-outer thead th:last-child { border-right: none; }
+        .chat-table-outer tbody tr { border-bottom: 1px solid #ccc; transition: background .08s; }
+        .chat-table-outer tbody tr:last-child { border-bottom: none; }
+        .chat-table-outer tbody tr:nth-child(even) { background: #ede8dc; }
+        .chat-table-outer tbody tr:hover { background: #e0d9cc; }
+        .chat-table-outer tbody td {
+            padding: .35rem .75rem;
+            border-right: 1px solid #ddd;
+            vertical-align: middle;
+        }
+        .chat-table-outer tbody td:last-child { border-right: none; }
+        .chat-table-outer tbody td.num {
+            text-align: right;
+            font-weight: 700;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .chat-table-outer tbody td.bold { font-weight: 700; }
+
+        /* ── Browse toolbar ─────────────────────────────────────────── */
+        .browse-toolbar {
+            flex-shrink: 0;
+            background: var(--paper);
+            border-bottom: var(--border);
+            padding: .55rem 1.5rem;
+        }
+        .toolbar-inner { max-width: 64rem; margin: 0 auto; display: flex; gap: .7rem; align-items: center; }
+        .search-wrap { flex: 1; position: relative; }
+        .search-icon { position: absolute; left: .6rem; top: 50%; transform: translateY(-50%); color: var(--ink3); }
+        .browse-search {
+            width: 100%;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 15px;
+            padding: .45rem .75rem .45rem 2.2rem;
+            border: var(--border);
+            background: var(--card);
+            outline: none;
+            color: var(--ink);
+            transition: box-shadow .09s;
+        }
+        .browse-search:focus { box-shadow: var(--shadow); }
+        .browse-search::placeholder { color: var(--ink3); }
+        .row-count { font-size: 13px; color: var(--ink3); white-space: nowrap; }
+
+        /* ── Lampiran tab strip ─────────────────────────────────────── */
+        .lamp-strip {
+            flex-shrink: 0;
+            background: var(--paper);
+            border-bottom: var(--border);
+            overflow-x: auto;
+        }
+        .lamp-strip-inner { max-width: 64rem; margin: 0 auto; display: flex; }
+        .lamp-tab {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 14px;
+            font-weight: 600;
+            padding: .35rem .9rem;
+            border: none;
+            border-right: 1px solid #ccc;
+            background: transparent;
+            color: var(--ink2);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .09s, color .09s;
+        }
+        .lamp-tab.active { background: var(--ink); color: var(--card); }
+        .lamp-tab:not(.active):hover { background: rgba(0,0,0,.07); }
+
+        /* ── Browse content ─────────────────────────────────────────── */
+        .browse-scroll { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; }
+        .browse-inner  { max-width: 72rem; margin: 0 auto; }
+
+        /* ── Lampiran group ─────────────────────────────────────────── */
+        .lamp-group { margin-bottom: 2.25rem; }
+        .lamp-group-hdr {
+            display: flex; align-items: center; gap: .5rem;
+            cursor: pointer; margin-bottom: .75rem;
+        }
+        .lamp-group-hdr svg { flex-shrink: 0; transition: transform .18s; }
+        .lamp-group-hdr svg.open { transform: rotate(90deg); }
+        .lamp-group-title {
+            flex: 1;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-bottom: 2px solid var(--ink);
+            padding-bottom: .1rem;
+        }
+        .badge {
+            font-size: 12px;
+            padding: .05rem .45rem;
+            border: 1.5px solid var(--ink3);
+            color: var(--ink3);
+        }
+
+        /* ── Section card ───────────────────────────────────────────── */
+        .section-card {
+            border: var(--border);
+            background: var(--card);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.1rem;
+        }
+        .section-hdr {
+            background: var(--ink);
+            color: var(--card);
+            padding: .5rem .9rem;
+            display: flex; align-items: center; gap: .55rem;
+            cursor: pointer; user-select: none;
+        }
+        .section-hdr:hover { background: #2a2a2a; }
+        .section-hdr svg { flex-shrink: 0; transition: transform .18s; }
+        .section-hdr svg.open { transform: rotate(90deg); }
+        .section-hdr .sec-icon { font-size: 1rem; }
+        .section-hdr .sec-label { font-size: 1rem; font-weight: 700; flex: 1; }
+        .sec-badge {
+            font-size: 12px;
+            padding: .05rem .45rem;
+            border: 1.5px solid rgba(255,255,255,.4);
+            color: rgba(255,255,255,.7);
+            margin-left: auto;
+        }
+
+        /* ── Browse table ───────────────────────────────────────────── */
+        .browse-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        .browse-table thead tr { background: var(--blue); color: var(--card); }
+        .browse-table thead th {
+            padding: .4rem .75rem;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: .02em;
+            border-right: 1px solid rgba(255,255,255,.15);
+        }
+        .browse-table thead th:last-child { border-right: none; }
+        .browse-table tbody tr { border-bottom: 1px solid #d0cbc0; transition: background .08s; }
+        .browse-table tbody tr:last-child { border-bottom: none; }
+        .browse-table tbody tr:hover { background: #ede8dc; }
+        .browse-table tbody td {
+            padding: .35rem .75rem;
+            vertical-align: top;
+            border-right: 1px solid #e0dbd0;
+        }
+        .browse-table tbody td:last-child { border-right: none; }
+        .uraian-main { font-weight: 600; }
+        .uraian-crumb { font-size: 13px; color: var(--blue); opacity: .7; margin-top: .1rem; }
+        .satuan-cell  { font-size: 13px; color: var(--ink2); }
+        .no-cell      { font-size: 12px; color: var(--ink3); text-align: center; }
+        .besaran-main { font-weight: 700; }
+        .besaran-sub  { font-size: 13px; }
+        .besaran-sub .lbl { color: var(--ink2); }
+        .besaran-sub .val { font-weight: 700; margin-left: .2rem; }
+        .at-cost { color: #7a5c00; font-style: italic; }
+
+        /* ── Loading / empty ────────────────────────────────────────── */
+        .spinner {
+            width: 28px; height: 28px;
+            border: 2px solid #ccc;
+            border-top-color: var(--ink);
+            animation: spin .75s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 4rem 0; color: var(--ink3); font-size: 15px; }
+
+        /* ── Footer ─────────────────────────────────────────────────── */
+        .app-footer {
+            flex-shrink: 0;
+            border-top: var(--border);
+            background: var(--paper);
+            padding: .35rem 1.5rem;
+            text-align: center;
+            font-size: 13px;
+            color: var(--ink3);
+        }
+
+        /* ── Section indent ─────────────────────────────────────────── */
+        .section-indent { margin-left: .4rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div style="display:flex;align-items:center;gap:.75rem;">
+            <div class="logo-box">
+                <svg width="22" height="22" fill="none" stroke="#f4efe4" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="square" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="app-title">SBM UI Chat</div>
+                <div class="app-sub">Standar Biaya Universitas Indonesia</div>
+            </div>
+        </div>
+
+        <div class="tab-group">
+            <button @click="activeView = 'chat'"
+                    :class="activeView === 'chat' ? 'active' : ''"
+                    class="tab-btn">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="square" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                Chat
+            </button>
+            <button @click="activeView = 'browse'; loadBrowseData()"
+                    :class="activeView === 'browse' ? 'active' : ''"
+                    class="tab-btn">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="square" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                Tabel
+            </button>
+        </div>
+
+        <div style="font-size:13px;color:var(--ink3);">Peraturan Rektor No.&nbsp;16/2024</div>
+    </header>
+
+    <main>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- CHAT VIEW                                                    -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div x-show="activeView === 'chat'" x-cloak class="view">
+
+            <div class="chat-scroll" id="chatMessages" x-ref="chatMessages">
+                <div class="chat-wrap">
+
+                    <!-- Welcome -->
+                    <template x-if="messages.length === 0">
+                        <div class="welcome fade-in">
+                            <div class="welcome-icon">
+                                <svg width="36" height="36" fill="none" stroke="#1a1a1a" stroke-width="1.6" viewBox="0 0 24 24">
+                                    <path stroke-linecap="square" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <h2>Tanya Standar Biaya UI</h2>
+                            <p>Tanyakan apa saja tentang tarif, honorarium, tunjangan, dan biaya operasional sesuai Peraturan Rektor UI No. 16/2024.</p>
+                            <div class="chips">
+                                <button class="chip" @click="sendSuggestion('Berapa honor dosen tamu dari luar negeri?')">Honor dosen tamu luar negeri?</button>
+                                <button class="chip" @click="sendSuggestion('Berapa uang harian perjalanan dinas ke DKI Jakarta?')">Uang harian dinas Jakarta?</button>
+                                <button class="chip" @click="sendSuggestion('Tarif penginapan untuk kategori A di Bali?')">Penginapan kategori A di Bali?</button>
+                                <button class="chip" @click="sendSuggestion('Apa saja kategori pegawai dan siapa yang termasuk?')">Kategori pegawai A–E?</button>
+                                <button class="chip" @click="sendSuggestion('Berapa honorarium pembimbing tugas akhir program doktor?')">Honor pembimbing TA doktor?</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Messages -->
+                    <template x-for="(msg, idx) in messages" :key="idx">
+                        <div class="msg-enter" :class="msg.role === 'user' ? 'bubble-row-user' : 'bubble-row-ai'">
+                            <div :class="msg.role === 'user' ? 'bubble-user' : 'bubble-ai'">
+                                <div class="chat-content" x-html="formatMessage(msg.content)"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Typing indicator -->
+                    <div x-show="isLoading" class="bubble-row-ai msg-enter">
+                        <div class="bubble-ai" style="padding:.55rem .85rem;">
+                            <div style="display:flex;gap:.35rem;align-items:center;height:1.1rem;">
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Input bar -->
+            <div class="input-bar">
+                <form class="input-form" @submit.prevent="sendMessage()">
+                    <input type="text" class="chat-input"
+                           x-model="userInput"
+                           :disabled="isLoading"
+                           placeholder="Tanya tentang Standar Biaya UI..."
+                           autocomplete="off">
+                    <button type="submit" class="send-btn" :disabled="isLoading || !userInput.trim()">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="square" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Kirim
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- BROWSE VIEW                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div x-show="activeView === 'browse'" x-cloak class="view">
+
+            <!-- Search -->
+            <div class="browse-toolbar">
+                <div class="toolbar-inner">
+                    <div class="search-wrap">
+                        <svg class="search-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="square" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" class="browse-search"
+                               x-model="browseSearch"
+                               @input.debounce.300ms="filterBrowseData()"
+                               placeholder="Cari standar biaya... (contoh: dosen tamu, wisuda, penginapan)">
+                    </div>
+                    <div class="row-count" x-text="filteredRowCount + ' item'"></div>
+                </div>
+            </div>
+
+            <!-- Lampiran tabs -->
+            <div class="lamp-strip">
+                <div class="lamp-strip-inner">
+                    <button class="lamp-tab" :class="activeLampiran === 'all' ? 'active' : ''"
+                            @click="activeLampiran = 'all'; filterBrowseData()">Semua</button>
+                    <template x-for="(info, key) in browseData" :key="key">
+                        <button class="lamp-tab" :class="activeLampiran === key ? 'active' : ''"
+                                @click="activeLampiran = key; filterBrowseData()">
+                            <span x-text="info.nama"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="browse-scroll">
+                <div class="browse-inner">
+
+                    <!-- Loading -->
+                    <div x-show="browseLoading" style="text-align:center;padding:4rem 0;">
+                        <div class="spinner"></div>
+                        <p style="margin-top:.75rem;color:var(--ink3);font-size:15px;">Memuat data...</p>
+                    </div>
+
+                    <div x-show="!browseLoading">
+                        <template x-for="(info, lampKey) in filteredBrowseData" :key="lampKey">
+                            <div class="lamp-group fade-in">
+
+                                <!-- Lampiran header -->
+                                <div class="lamp-group-hdr" @click="toggleLampiranCollapse(lampKey)">
+                                    <svg :class="collapsedLampiran[lampKey] ? '' : 'open'"
+                                         width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="square" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                    <span class="lamp-group-title">
+                                        Lampiran <span x-text="lampKey"></span> &mdash; <span x-text="info.nama"></span>
+                                    </span>
+                                    <span class="badge" x-text="info.rows.length + ' item'"></span>
+                                </div>
+
+                                <!-- Sections -->
+                                <div x-show="!collapsedLampiran[lampKey]" x-transition class="section-indent">
+                                    <template x-for="(section, sIdx) in groupRowsBySection(info.rows)" :key="sIdx">
+                                        <div class="section-card">
+
+                                            <!-- Section header -->
+                                            <div class="section-hdr" @click="toggleSectionCollapse(lampKey, section.key)">
+                                                <svg :class="isSectionCollapsed(lampKey, section.key) ? '' : 'open'"
+                                                     width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="square" d="M9 5l7 7-7 7"/>
+                                                </svg>
+                                                <span class="sec-icon" x-text="sectionIcon(section.key)"></span>
+                                                <span class="sec-label" x-text="section.label"></span>
+                                                <span class="sec-badge" x-text="section.rows.length + ' item'"></span>
+                                            </div>
+
+                                            <!-- Table -->
+                                            <div x-show="!isSectionCollapsed(lampKey, section.key)" x-transition>
+                                                <table class="browse-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width:2.5rem;">No</th>
+                                                            <th>Uraian</th>
+                                                            <th style="width:5rem;">Satuan</th>
+                                                            <th style="min-width:13rem;">Besaran Tertinggi</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <template x-for="(row, rIdx) in section.rows" :key="rIdx">
+                                                            <tr>
+                                                                <td class="no-cell" x-text="rIdx + 1"></td>
+                                                                <td>
+                                                                    <div class="uraian-main" x-text="row.uraian || '-'"></div>
+                                                                    <div class="uraian-crumb"
+                                                                         x-text="pathBreadcrumb(row.path, row.uraian || '')"
+                                                                         x-show="pathBreadcrumb(row.path, row.uraian || '')"></div>
+                                                                </td>
+                                                                <td class="satuan-cell" x-text="row.satuan || '-'"></td>
+                                                                <td>
+                                                                    <template x-if="row.besaran && row.besaran.includes(' / ')">
+                                                                        <div style="display:flex;flex-direction:column;gap:.1rem;">
+                                                                            <template x-for="(part, pIdx) in row.besaran.split(' / ')" :key="pIdx">
+                                                                                <div class="besaran-sub">
+                                                                                    <span class="lbl" x-text="part.split(': ')[0] + ':'"></span>
+                                                                                    <span class="val" x-text="part.split(': ').slice(1).join(': ')"></span>
+                                                                                </div>
+                                                                            </template>
+                                                                        </div>
+                                                                    </template>
+                                                                    <template x-if="!row.besaran || !row.besaran.includes(' / ')">
+                                                                        <span class="besaran-main"
+                                                                              :class="row.besaran === 'at cost' ? 'at-cost' : ''"
+                                                                              x-text="row.besaran"></span>
+                                                                    </template>
+                                                                </td>
+                                                            </tr>
+                                                        </template>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                        </div>
+                                    </template>
+                                </div>
+
+                            </div>
+                        </template>
+
+                        <div x-show="Object.keys(filteredBrowseData).length === 0 && !browseLoading" class="empty-state">
+                            <svg width="48" height="48" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto .75rem;display:block;">
+                                <path stroke-linecap="square" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Tidak ditemukan data untuk "<span x-text="browseSearch"></span>"
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="app-footer">
+        Berdasarkan Peraturan Rektor Universitas Indonesia Nomor 16 Tahun 2024 &mdash; Ditetapkan 12 Juli 2024
+    </footer>
+
+    <script>
+        function sbmApp() {
+            return {
+                activeView: 'chat',
+                messages: [],
+                userInput: '',
+                isLoading: false,
+                browseData: {},
+                filteredBrowseData: {},
+                browseSearch: '',
+                browseLoading: false,
+                activeLampiran: 'all',
+                collapsedLampiran: {},
+                filteredRowCount: 0,
+
+                init() {
+                    this.loadBrowseData();
+                },
+
+                sendSuggestion(text) {
+                    this.userInput = text;
+                    this.sendMessage();
+                },
+
+                async sendMessage() {
+                    const msg = this.userInput.trim();
+                    if (!msg || this.isLoading) return;
+
+                    this.messages.push({ role: 'user', content: msg });
+                    this.userInput = '';
+                    this.isLoading = true;
+                    this.scrollToBottom();
+
+                    try {
+                        const history = this.messages.filter(m => m.role !== 'system').slice(-10);
+                        const res = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: msg, history: history.slice(0, -1) })
+                        });
+
+                        const contentType = res.headers.get('content-type');
+
+                        if (contentType && contentType.includes('text/event-stream')) {
+                            const reader = res.body.getReader();
+                            const decoder = new TextDecoder();
+                            let buffer = '';
+                            let msgIdx = -1;
+
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                buffer += decoder.decode(value, { stream: true });
+                                const lines = buffer.split('\n');
+                                buffer = lines.pop() || '';
+                                for (const line of lines) {
+                                    if (line.startsWith('data: ')) {
+                                        try {
+                                            const data = JSON.parse(line.slice(6));
+                                            if (data.text || data.error) {
+                                                if (msgIdx === -1) {
+                                                    this.messages.push({ role: 'assistant', content: '' });
+                                                    msgIdx = this.messages.length - 1;
+                                                    this.isLoading = false;
+                                                }
+                                                if (data.text)  { this.messages[msgIdx].content += data.text; this.scrollToBottom(); }
+                                                if (data.error) { this.messages[msgIdx].content += `\n\nError: ${data.error}`; }
+                                            }
+                                        } catch (e) {}
+                                    }
+                                }
+                            }
+                            if (msgIdx === -1) {
+                                this.messages.push({ role: 'assistant', content: '(Tidak ada respons dari server)' });
+                            }
+                        } else {
+                            const data = await res.json();
+                            this.messages.push({ role: 'assistant', content: data.response });
+                        }
+                    } catch (err) {
+                        this.messages.push({ role: 'assistant', content: `Maaf, terjadi kesalahan: ${err.message}` });
+                    }
+
+                    this.isLoading = false;
+                    this.scrollToBottom();
+                },
+
+                formatMessage(text) {
+                    if (!text) return '';
+
+                    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                    const inline = s => s
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+                    const lines = text.split('\n');
+                    const blocks = [];
+                    let buf = [], inTable = false;
+                    for (const line of lines) {
+                        const isRow = /^\s*\|.+\|/.test(line);
+                        if (isRow !== inTable) {
+                            if (buf.length) blocks.push({ table: inTable, lines: [...buf] });
+                            buf = [line];
+                            inTable = isRow;
+                        } else {
+                            buf.push(line);
+                        }
+                    }
+                    if (buf.length) blocks.push({ table: inTable, lines: buf });
+
+                    return blocks.map(block => {
+                        if (block.table) {
+                            const isSep = l => /^\s*\|[\s\-:|]+\|/.test(l);
+                            const dataLines = block.lines.filter(l => l.trim() && !isSep(l));
+                            if (!dataLines.length) return '';
+
+                            const cells = l => l.split('|').slice(1, -1).map(c => c.trim());
+                            const hdrs  = cells(dataLines[0]);
+                            const rows  = dataLines.slice(1).map(cells);
+
+                            let t = '<div class="chat-table-outer"><table><thead><tr>';
+                            hdrs.forEach(h => { t += `<th>${esc(h)}</th>`; });
+                            t += '</tr></thead><tbody>';
+
+                            rows.forEach((row, i) => {
+                                t += '<tr>';
+                                row.forEach((cell, j) => {
+                                    const isNum  = /^(Rp|USD|\$|€|[\d.,]+\s*%?)/.test(cell);
+                                    const isBold = j === 0;
+                                    const cls = isNum ? 'num' : (isBold ? 'bold' : '');
+                                    t += `<td${cls ? ` class="${cls}"` : ''}>${inline(esc(cell))}</td>`;
+                                });
+                                t += '</tr>';
+                            });
+
+                            t += '</tbody></table></div>';
+                            return t;
+                        }
+
+                        const processed = block.lines.map(line => {
+                            const e = esc(line);
+                            if (/^### /.test(e)) return `<h3>${inline(e.slice(4))}</h3>`;
+                            if (/^## /.test(e))  return `<h2>${inline(e.slice(3))}</h2>`;
+                            if (/^# /.test(e))   return `<h1>${inline(e.slice(2))}</h1>`;
+                            if (/^[-*] /.test(e)) return `<li>${inline(e.slice(2))}</li>`;
+                            if (/^\d+\. /.test(e)) return `<li>${inline(e.replace(/^\d+\.\s*/, ''))}</li>`;
+                            if (/^-{3,}$/.test(e.trim())) return '<hr>';
+                            return inline(e);
+                        });
+
+                        let joined = processed.join('\n');
+                        joined = joined.replace(/((?:<li>[\s\S]*?<\/li>\n?)+)/g, '<ul>$1</ul>');
+                        return joined.replace(/\n/g, '<br>');
+                    }).join('');
+                },
+
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const el = this.$refs.chatMessages;
+                        if (el) el.scrollTop = el.scrollHeight;
+                    });
+                },
+
+                async loadBrowseData() {
+                    if (Object.keys(this.browseData).length > 0) return;
+                    this.browseLoading = true;
+                    try {
+                        const res = await fetch('/api/browse');
+                        this.browseData = await res.json();
+                        this.filterBrowseData();
+                    } catch (err) {
+                        console.error('Failed to load browse data:', err);
+                    }
+                    this.browseLoading = false;
+                },
+
+                filterBrowseData() {
+                    const q = this.browseSearch.toLowerCase().trim();
+                    let totalRows = 0;
+                    const filtered = {};
+                    for (const [key, info] of Object.entries(this.browseData)) {
+                        if (this.activeLampiran !== 'all' && this.activeLampiran !== key) continue;
+                        let rows = info.rows;
+                        if (q) {
+                            const words = q.split(/\s+/).filter(Boolean);
+                            rows = rows.filter(r => {
+                                const haystack = [
+                                    r.uraian  || '',
+                                    (r.path   || '').replace(/_/g, ' '),
+                                    r.besaran || '',
+                                    r.satuan  || '',
+                                ].join(' ').toLowerCase();
+                                return words.every(w => haystack.includes(w));
+                            });
+                        }
+                        if (rows.length > 0) {
+                            filtered[key] = { nama: info.nama, rows: rows };
+                            totalRows += rows.length;
+                        }
+                    }
+                    this.filteredBrowseData = filtered;
+                    this.filteredRowCount = totalRows;
+                },
+
+                toggleLampiranCollapse(key) {
+                    this.collapsedLampiran[key] = !this.collapsedLampiran[key];
+                },
+
+                collapsedSections: {},
+
+                toggleSectionCollapse(lampKey, sectionKey) {
+                    const id = lampKey + '::' + sectionKey;
+                    this.collapsedSections[id] = !this.collapsedSections[id];
+                },
+
+                isSectionCollapsed(lampKey, sectionKey) {
+                    return !!this.collapsedSections[lampKey + '::' + sectionKey];
+                },
+
+                groupRowsBySection(rows) {
+                    const groups = {}, order = [];
+                    for (const row of rows) {
+                        const sectionKey = (row.path || '').split(' > ')[0] || '_ungrouped';
+                        if (!groups[sectionKey]) { groups[sectionKey] = []; order.push(sectionKey); }
+                        groups[sectionKey].push(row);
+                    }
+                    return order.map(key => ({ key, label: this.sectionLabel(key), rows: groups[key] }));
+                },
+
+                sectionLabel(key) {
+                    const labels = {
+                        '1_honorarium_dosen_tamu': 'Honorarium Dosen Tamu',
+                        '2_honor_pembimbing_tugas_akhir': 'Honor Pembimbing Tugas Akhir',
+                        '3_honor_penguji_tugas_akhir': 'Honor Penguji Tugas Akhir',
+                        '4_honor_pengajar': 'Honor Pengajar',
+                        '5_honor_penguji_komprehensif': 'Honor Penguji Komprehensif',
+                        '6_honor_pelaksana_praktikum': 'Honor Pelaksana Praktikum',
+                        '7_uang_ujian': 'Uang Ujian',
+                        '8_honor_dosen_pembina_kemahasiswaan': 'Honor Dosen Pembina Kemahasiswaan',
+                        '9_honor_asistensi_dosen': 'Honor Asistensi Dosen',
+                        '10_biaya_kegiatan_pendidikan_lainnya': 'Biaya Kegiatan Pendidikan Lainnya',
+                        'paket_rapat_luar_kantor': 'Paket Rapat di Luar Kantor',
+                        'transportasi_darat': 'Transportasi Darat',
+                        'tiket_pesawat_dalam_negeri': 'Tiket Pesawat Dalam Negeri',
+                        'tiket_pesawat_luar_negeri': 'Tiket Pesawat Luar Negeri',
+                        'biaya_rapid_test': 'Biaya Rapid Test / PCR',
+                        'transportasi_bandara': 'Transportasi Bandara',
+                        'biaya_penginapan_dalam_negeri': 'Penginapan Dalam Negeri',
+                        'uang_harian_dalam_negeri': 'Uang Harian Dalam Negeri',
+                        'uang_harian_luar_negeri': 'Uang Harian Luar Negeri',
+                        'uang_representasi_luar_negeri': 'Uang Representasi Luar Negeri',
+                    };
+                    if (labels[key]) return labels[key];
+                    return key.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                },
+
+                pathBreadcrumb(path, uraian = '') {
+                    if (!path) return '';
+                    const parts = path.split(' > ');
+                    const structural = new Set([
+                        'items', 'per_kota', 'per_provinsi', 'per_provinsi_kategori',
+                        'per_negara_kategori', 'sewa_insidentil_per_provinsi'
+                    ]);
+                    const fmt  = s => s.replace(/^\d+_/, '').replace(/_/g, ' ').trim();
+                    const norm = s => fmt(s).toLowerCase();
+
+                    const lastPart   = parts[parts.length - 1];
+                    const lastNorm   = norm(lastPart);
+                    const uraianNorm = uraian.toLowerCase().trim();
+
+                    const middle   = parts.length > 2
+                        ? parts.slice(1, -1).filter(p => !structural.has(p)).map(fmt)
+                        : [];
+                    const lastCrumb = (lastNorm !== uraianNorm && !structural.has(lastPart))
+                        ? fmt(lastPart) : null;
+                    const crumbs = [...middle, ...(lastCrumb ? [lastCrumb] : [])];
+                    if (!crumbs.length) crumbs.push(fmt(parts[0]));
+                    return crumbs.join(' › ');
+                },
+
+                sectionIcon(key) {
+                    const icons = {
+                        'tiket_pesawat_dalam_negeri': '✈️',
+                        'tiket_pesawat_luar_negeri': '🌏',
+                        'biaya_penginapan_dalam_negeri': '🏨',
+                        'uang_harian_dalam_negeri': '💰',
+                        'uang_harian_luar_negeri': '💵',
+                        'uang_representasi_luar_negeri': '💼',
+                        'transportasi_darat': '🚗',
+                        'transportasi_bandara': '🚕',
+                        'paket_rapat_luar_kantor': '📋',
+                        'biaya_rapid_test': '🩺',
+                        '1_honorarium_dosen_tamu': '🎓',
+                        '2_honor_pembimbing_tugas_akhir': '📚',
+                        '3_honor_penguji_tugas_akhir': '🔍',
+                        '4_honor_pengajar': '👨‍🏫',
+                        '5_honor_penguji_komprehensif': '📝',
+                        '6_honor_pelaksana_praktikum': '🧪',
+                        '7_uang_ujian': '📰',
+                    };
+                    return icons[key] || '📄';
+                },
+            };
+        }
+    </script>
+</body>
+</html>
